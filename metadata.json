@@ -1,0 +1,5 @@
+{
+  "name": "Riemann vs Lebesgue Explorer",
+  "description": "An interactive visualization comparing Riemann and Lebesgue integration methods using geometric intuition.",
+  "requestFramePermissions": []
+}
