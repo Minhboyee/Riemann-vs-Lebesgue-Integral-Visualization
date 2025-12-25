@@ -1,9 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FunctionType, RiemannSumType } from './types';
 import { FUNCTIONS } from './utils/math';
 import { RiemannVisualizer } from './components/RiemannVisualizer';
 import { LebesgueVisualizer } from './components/LebesgueVisualizer';
 import { Settings, Info, Sigma, Layers, Infinity as InfinityIcon } from 'lucide-react';
+
+// Simple KaTeX Wrapper Component
+const Latex = ({ formula, className = '' }: { formula: string, className?: string }) => {
+  const [html, setHtml] = useState('');
+
+  useEffect(() => {
+    if ((window as any).katex) {
+      try {
+        // use renderToString to avoid "KaTeX doesn't work in quirks mode" error
+        // which can happen in some environments even with valid doctype if katex.render is used directly
+        const rendered = (window as any).katex.renderToString(formula, {
+          throwOnError: false,
+          displayMode: false
+        });
+        setHtml(rendered);
+      } catch (e) {
+        console.error("KaTeX error:", e);
+        setHtml(formula); // Fallback to plain text
+      }
+    } else {
+        setHtml(formula);
+    }
+  }, [formula]);
+
+  return <span className={className} dangerouslySetInnerHTML={{ __html: html }} />;
+};
 
 const App: React.FC = () => {
   const [selectedFunc, setSelectedFunc] = useState<FunctionType>(FunctionType.X_SQUARED);
@@ -221,7 +247,7 @@ const App: React.FC = () => {
                 </div>
              </div>
 
-             {/* Comparison Table */}
+             {/* Comparison Table 1 */}
              <div className="border-t border-indigo-700/50 pt-8">
                 <div className="mb-6">
                     <h3 className="text-xl font-bold text-white">Riemann Integral vs Lebesgue Integral</h3>
@@ -315,6 +341,77 @@ const App: React.FC = () => {
                 <div className="mt-8 text-center space-y-1">
                     <p className="text-xl font-medium text-white">Riemann and Lebesgue integrate the same area.</p>
                     <p className="text-indigo-300">They differ in the question they ask.</p>
+                </div>
+             </div>
+
+             {/* Comparison Table 2 - Formulas */}
+             <div className="border-t border-indigo-700/50 mt-12 pt-12">
+                <div className="mb-6">
+                    <h3 className="text-xl font-bold text-white">Riemann Integral vs Lebesgue Integral Formula (Layer-Cake Form)</h3>
+                    <p className="text-indigo-300 text-sm">Same area. Different direction of sweep.</p>
+                </div>
+
+                <div className="overflow-x-auto bg-white/5 rounded-xl border border-indigo-700/50">
+                    <table className="w-full text-sm text-left border-collapse">
+                        <thead className="text-xs text-indigo-200 uppercase bg-indigo-800/50">
+                            <tr>
+                                <th className="px-6 py-4 font-bold tracking-wider">Aspect</th>
+                                <th className="px-6 py-4 font-bold text-blue-300 tracking-wider">Riemann Integral</th>
+                                <th className="px-6 py-4 font-bold text-fuchsia-300 tracking-wider">Lebesgue Integral (Layer-Cake)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-indigo-800/50">
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-4 font-medium text-indigo-200">Integral formula</td>
+                                <td className="px-6 py-4 text-indigo-100/90">
+                                    <Latex formula={`\\displaystyle \\int_a^b f(x)\\,dx`} />
+                                </td>
+                                <td className="px-6 py-4 text-indigo-100/90">
+                                    <Latex formula={`\\displaystyle \\int_0^{\\infty} \\mu\\{x\\in[a,b] : f(x) > t\\}\\,dt`} />
+                                </td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">What is being swept</td>
+                                <td className="px-6 py-3 text-indigo-100/90"><strong className="text-white">Position (x)</strong></td>
+                                <td className="px-6 py-3 text-indigo-100/90"><strong className="text-white">Value (t)</strong></td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Meaning of the variable</td>
+                                <td className="px-6 py-3 text-indigo-100/90"><Latex formula="x" />: a point in the domain</td>
+                                <td className="px-6 py-3 text-indigo-100/90"><Latex formula="t" />: a value (height level)</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Direction of sweep</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Along the <strong className="text-white">x-axis</strong> (left → right)</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Along the <strong className="text-white">value axis</strong> (bottom → top)</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Meaning of integration bounds</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Bounds <Latex formula="[a,b]" /> reflect the <strong className="text-white">domain</strong></td>
+                                <td className="px-6 py-3 text-indigo-100/90">Bounds <Latex formula={'[0,\\infty)'} /> reflect the <strong className="text-white">range of values</strong></td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">What is accumulated</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Values of the function at positions</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Measure of sets where the function exceeds a value</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Geometric intuition</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Vertical accumulation (columns)</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Horizontal accumulation (layers / slices)</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Conceptual summary</td>
+                                <td className="px-6 py-3 text-indigo-100 italic">“Scan the graph by position”</td>
+                                <td className="px-6 py-3 text-indigo-100 italic">“Stack layers by value”</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div className="mt-8 text-center space-y-1">
+                    <p className="text-indigo-200">Riemann: the bounds reflect the domain.</p>
+                    <p className="text-white font-medium">Lebesgue: the bounds reflect the value range of the function.</p>
                 </div>
              </div>
         </section>
