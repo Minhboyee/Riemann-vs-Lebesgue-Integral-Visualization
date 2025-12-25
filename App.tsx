@@ -23,7 +23,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold">∫</div>
             <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-              Integral Explorer
+              Integral Explorer - MinhAI2
             </h1>
           </div>
           <div className="text-sm text-slate-500 hidden sm:block">
@@ -199,7 +199,7 @@ const App: React.FC = () => {
 
         {/* Info/Footer */}
         <section className="bg-indigo-900 text-white rounded-2xl p-8 shadow-xl">
-             <div className="flex items-start gap-4">
+             <div className="flex items-start gap-4 mb-10">
                 <Info className="flex-shrink-0 mt-1" />
                 <div>
                     <h3 className="text-lg font-bold mb-2">The Intuitive Difference</h3>
@@ -218,6 +218,103 @@ const App: React.FC = () => {
                             <p className="text-xs mt-2 text-fuchsia-200 font-mono">Sum = Σ y_j · Measure({'{'}x : f(x) ≈ y_j{'}'})</p>
                         </div>
                     </div>
+                </div>
+             </div>
+
+             {/* Comparison Table */}
+             <div className="border-t border-indigo-700/50 pt-8">
+                <div className="mb-6">
+                    <h3 className="text-xl font-bold text-white">Riemann Integral vs Lebesgue Integral</h3>
+                    <p className="text-indigo-300 text-sm">Same area. Different way of counting.</p>
+                </div>
+
+                <div className="overflow-x-auto bg-white/5 rounded-xl border border-indigo-700/50">
+                    <table className="w-full text-sm text-left border-collapse">
+                        <thead className="text-xs text-indigo-200 uppercase bg-indigo-800/50">
+                            <tr>
+                                <th className="px-6 py-4 font-bold tracking-wider">Aspect</th>
+                                <th className="px-6 py-4 font-bold text-blue-300 tracking-wider">Riemann Integral</th>
+                                <th className="px-6 py-4 font-bold text-fuchsia-300 tracking-wider">Lebesgue Integral</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-indigo-800/50">
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Core question</td>
+                                <td className="px-6 py-3 text-indigo-100/90">“At each position x, how high is the function?”</td>
+                                <td className="px-6 py-3 text-indigo-100/90">“For each value (height), how much space does it occupy?”</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Coloring intuition</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Coloring <strong className="text-white">by position</strong> – left to right (x-axis)</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Coloring <strong className="text-white">by value</strong> – bottom to top (value / height axis)</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">How the domain is partitioned</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Partition the <strong className="text-white">x-axis</strong> (domain)</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Partition the <strong className="text-white">value axis</strong> (range / levels)</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">What is being summed</td>
+                                <td className="px-6 py-3 text-indigo-100/90 font-mono text-xs">Vertical rectangles: f(xᵢ) · Δx</td>
+                                <td className="px-6 py-3 text-indigo-100/90 font-mono text-xs">Measure of level sets: μ{'{'}x : f(x) &gt; t{'}'} · dt</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Role of rectangles</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Rectangles are the <strong className="text-white">foundation</strong> of the definition</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Rectangles are <strong className="text-white">only a visualization aid</strong></td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Meaning of dx / dt</td>
+                                <td className="px-6 py-3 text-indigo-100/90"><span className="font-mono">dx</span> = real geometric width</td>
+                                <td className="px-6 py-3 text-indigo-100/90"><span className="font-mono">dt</span> = notation for integration by measure (not a shape)</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Sensitivity to discontinuities</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Highly sensitive; may fail</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Robust; ignores changes on measure-zero sets</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Changing the function on a few points</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Can break integrability</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Has no effect on the integral</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Dirichlet function</td>
+                                <td className="px-6 py-3 text-red-300 font-bold">❌ Not integrable</td>
+                                <td className="px-6 py-3 text-green-300 font-bold">✅ Integrable (pure measure logic)</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Function “niceness” required</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Needs relative smoothness</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Only requires measurability</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Mathematical nature</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Limit of geometric sums</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Integral with respect to a measure</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Relationship to probability</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Not natural</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Natural (expectation, distributions)</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">Typical use cases</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Intro calculus, simple geometry</td>
+                                <td className="px-6 py-3 text-indigo-100/90">Modern analysis, probability, ML, Fourier</td>
+                            </tr>
+                            <tr className="hover:bg-white/5 transition-colors">
+                                <td className="px-6 py-3 font-medium text-indigo-200">One-line summary</td>
+                                <td className="px-6 py-3 text-indigo-100 italic">“Sum heights at positions”</td>
+                                <td className="px-6 py-3 text-indigo-100 italic">“Sum space occupied by values”</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div className="mt-8 text-center space-y-1">
+                    <p className="text-xl font-medium text-white">Riemann and Lebesgue integrate the same area.</p>
+                    <p className="text-indigo-300">They differ in the question they ask.</p>
                 </div>
              </div>
         </section>

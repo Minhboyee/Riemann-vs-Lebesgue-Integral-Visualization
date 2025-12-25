@@ -22,9 +22,11 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
     isInfinite = false,
     setIsInfinite
 }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('measure');
+  const [viewMode, setViewMode] = useState<ViewMode>('area');
   const [probeT, setProbeT] = useState<number | null>(null);
   const [isCoarseMode, setIsCoarseMode] = useState<boolean>(false);
+
+  // HOOKS MUST RUN UNCONDITIONALLY
 
   // Automatically switch to Theory mode if Dirichlet is selected
   useEffect(() => {
@@ -32,7 +34,7 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
         setViewMode('theory');
     } else if (viewMode === 'theory') {
         // Switch back to default view if moving away from Dirichlet
-        setViewMode('measure');
+        setViewMode('area');
     }
   }, [config.id]);
 
@@ -70,17 +72,26 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
       return measureSlices.reduce((acc, slice) => acc + (slice.yBase * slice.measure), 0);
   }, [measureSlices, config, isInfinite, yMin, yMax]);
 
-  const areaSum = useMemo(() => {
+  // The total potential area sum (full integration)
+  const maxAreaSum = useMemo(() => {
       if (config.id === FunctionType.DIRICHLET) return 0;
-      if (isInfinite) {
-          return integrateMeasureCurve(config.fn, config.domain, areaRange);
-      }
-      return areaSlices.reduce((acc, slice) => acc + (slice.height * slice.measure), 0);
-  }, [areaSlices, config, isInfinite, areaRange]);
-
+      return integrateMeasureCurve(config.fn, config.domain, areaRange);
+  }, [config, areaRange]);
 
   // Handle default probeT
   const currentT = probeT === null ? (yMax + yMin) / 2 : probeT;
+  
+  // Calculate Real-Time Accumulated Area
+  const accumulatedArea = useMemo(() => {
+      if (config.id === FunctionType.DIRICHLET) return 0;
+      // Integrate from bottom (0) to current slider position (currentT)
+      const tEnd = Math.max(areaYMin, currentT);
+      return integrateMeasureCurve(config.fn, config.domain, [areaYMin, tEnd]);
+  }, [config, areaYMin, currentT]);
+  
+  // Progress percentage
+  const progressPercent = Math.min(100, Math.max(0, ((currentT - areaYMin) / (yMax - areaYMin)) * 100));
+
   const currentMeasure = useMemo(() => {
       if (config.id === FunctionType.DIRICHLET) return 0;
       return calculateMeasure(config.fn, config.domain, currentT);
@@ -93,6 +104,128 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
       return getSliceGeometry(config.fn, config.domain, currentT, dt);
   }, [config, currentT, dt, viewMode, isCoarseMode, isInfinite]);
 
+  const funcPoints = useMemo(() => {
+      const step = (config.domain[1] - config.domain[0]) / 200;
+      const pts: Point[] = [];
+      for(let x = config.domain[0]; x <= config.domain[1]; x += step) pts.push({ x, y: config.fn(x) });
+      return pts;
+  }, [config]);
+
+  // EARLY RETURN FOR DIRICHLET (Moved after hooks)
+  if (config.id === FunctionType.DIRICHLET) {
+    return (
+        <div className="flex flex-col bg-white rounded-xl shadow-lg border border-amber-200 overflow-hidden h-full">
+            <div className="bg-amber-50 px-4 py-3 border-b border-amber-100 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <h2 className="text-lg font-bold text-amber-900">Lebesgue Integration</h2>
+                    <span className="text-[10px] uppercase tracking-wider font-bold bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">
+                        Theory-only
+                    </span>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-white text-slate-800">
+                {/* Global Message */}
+                <div className="bg-slate-50 border-l-4 border-slate-400 p-4 rounded-r-lg shadow-sm">
+                    <p className="text-slate-700 font-medium italic text-center">
+                        “This example is integrated by <strong>measure logic</strong>, not geometry.”
+                    </p>
+                </div>
+
+                {/* 1. Function Definition */}
+                <section>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-1">1. Function Definition</h3>
+                    <div className="font-mono text-sm bg-slate-50 p-5 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+                        <div className="flex items-center gap-4">
+                            <span>f(x) =</span>
+                            <div className="flex flex-col border-l-2 border-slate-400 pl-3 gap-1">
+                                <span>1   <span className="text-slate-500 text-xs ml-2">if x ∈ ℚ</span></span>
+                                <span>0   <span className="text-slate-500 text-xs ml-2">if x ∉ ℚ</span></span>
+                            </div>
+                        </div>
+                        <div className="mt-4 text-xs text-slate-500">Domain: [0, 1]</div>
+                    </div>
+                </section>
+
+                {/* 2. Level Set Analysis */}
+                <section>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-1">2. Level Set Analysis</h3>
+                    <p className="text-sm text-slate-600 mb-4">We analyze the super-level sets <span className="font-mono bg-slate-100 px-1 rounded text-xs">E_t = {'{'} x | f(x) {'>'} t {'}'}</span>:</p>
+                    
+                    <div className="space-y-4 pl-2">
+                        <div className="flex items-start gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5"></div>
+                            <div>
+                                <div className="font-mono text-sm text-indigo-900 font-bold mb-1">For 0 ≤ t &lt; 1:</div>
+                                <div className="font-mono text-sm text-slate-700 bg-indigo-50 px-3 py-1.5 rounded inline-block">
+                                    E_t = ℚ ∩ [0,1]
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex items-start gap-3">
+                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5"></div>
+                            <div>
+                                <div className="font-mono text-sm text-slate-500 font-bold mb-1">For t ≥ 1:</div>
+                                <div className="font-mono text-sm text-slate-400 bg-slate-50 px-3 py-1.5 rounded inline-block">
+                                    E_t = ∅
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 3. Measure Computation */}
+                <section>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-1">3. Measure Computation</h3>
+                    <div className="bg-blue-50 p-5 rounded-lg border border-blue-100 text-sm space-y-4 text-center">
+                        <p className="text-blue-900 leading-relaxed">
+                           <strong>ℚ is countable.</strong><br/>
+                           All countable sets have Lebesgue measure zero.
+                        </p>
+                        <div className="font-mono text-lg font-bold text-blue-700 bg-white/50 py-2 rounded">
+                           μ(E_t) = 0
+                        </div>
+                        <p className="text-xs uppercase tracking-wide text-blue-500 font-bold">
+                           For all relevant t
+                        </p>
+                    </div>
+                     <div className="mt-2 text-center text-xs text-slate-400 italic">
+                        “Every value level occupies zero space.”
+                    </div>
+                </section>
+
+                {/* 4. Integral Conclusion */}
+                <section>
+                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-1">4. Integral Conclusion</h3>
+                    <div className="bg-fuchsia-50 p-6 rounded-lg border border-fuchsia-100 text-center shadow-sm">
+                        <div className="font-mono text-sm inline-block text-left space-y-2">
+                            <div className="flex gap-3">
+                                <span className="w-12 text-right text-slate-500">∫ f dμ</span>
+                                <span>= ∫₀^∞ μ(E_t) dt</span>
+                            </div>
+                            <div className="flex gap-3">
+                                <span className="w-12"></span>
+                                <span>= ∫₀¹ 0 dt</span>
+                            </div>
+                            <div className="flex gap-3">
+                                <span className="w-12"></span>
+                                <span className="font-bold text-xl text-fuchsia-600">= 0</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 text-center">
+                 <p className="text-xs text-slate-500 italic">
+                    “This example shows why Lebesgue integration is not based on area approximation.”
+                 </p>
+            </div>
+        </div>
+    );
+  }
+
+  // STANDARD VISUALIZATION MODE
 
   // Visualization Dimensions
   const height = 180; 
@@ -124,13 +257,6 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
     .y0(yScaleArea(0))
     .y1(p => yScaleArea(p.y))
     .curve(d3Shape.curveMonotoneX);
-
-  const funcPoints = useMemo(() => {
-      const step = (config.domain[1] - config.domain[0]) / 200;
-      const pts: Point[] = [];
-      for(let x = config.domain[0]; x <= config.domain[1]; x += step) pts.push({ x, y: config.fn(x) });
-      return pts;
-  }, [config]);
 
   const isDirichlet = config.id === FunctionType.DIRICHLET;
 
@@ -167,18 +293,18 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                 >
                     <BoxSelect size={14}/> Slicing
                 </button>
-                <button 
-                    onClick={() => setViewMode('theory')}
-                    disabled={!isDirichlet}
-                    className={`px-2 py-1 text-xs font-medium rounded-md flex items-center gap-1 transition-colors ${viewMode === 'theory' ? 'bg-fuchsia-100 text-fuchsia-700' : 'text-gray-500 hover:text-fuchsia-600 disabled:opacity-30 disabled:hover:text-gray-500'}`}
-                >
-                    <BookOpen size={14}/> Theory
-                </button>
              </div>
         </div>
-        <span className="text-xs font-mono text-fuchsia-600 bg-fuchsia-100 px-2 py-1 rounded">
-            Integral ≈ {isDirichlet ? '0' : (isInfinite ? '≈ ' : '') + (viewMode === 'area' ? areaSum : totalSum).toFixed(4)}
-        </span>
+        <div className="flex flex-col items-end">
+            <span className="text-xs font-mono text-fuchsia-600 bg-fuchsia-100 px-2 py-1 rounded">
+                Accumulated ≈ {accumulatedArea.toFixed(4)}
+            </span>
+            {viewMode === 'area' && (
+                <span className="text-[9px] text-fuchsia-400 mt-0.5 font-medium">
+                    Total ≈ {isInfinite ? maxAreaSum.toFixed(4) : maxAreaSum.toFixed(4)}
+                </span>
+            )}
+        </div>
       </div>
 
       <div className="bg-white px-4 py-2 border-b border-fuchsia-50">
@@ -268,7 +394,6 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                                     return null;
                                 })
                             )}
-                            {/* In infinite mode, we don't draw the projection bars to keep it clean, or we could draw a line */}
                             
                             {!isDirichlet && !isInfinite && measureSlices.map((slice, i) => (
                                 <rect
@@ -281,13 +406,18 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                                     fillOpacity={0.1}
                                 />
                             ))}
-                            {isDirichlet && <text x={width/2} y={height/2} textAnchor="middle" fill="#94a3b8" fontSize="12">Geometric visualization unavailable</text>}
-                            <text x={margin.left + 10} y={yScaleFunc(currentT) - 5} fill="#c026d3" fontSize="10" fontWeight="bold">t = {currentT.toFixed(2)}</text>
+
+                            <text x={margin.left + 10} y={yScaleFunc(currentT) - 5} fill="#c026d3" fontSize="10" fontWeight="bold">Coloring: t = {currentT.toFixed(2)}</text>
                             <text x={width-margin.right} y={height-5} textAnchor="end" fontSize="10" fill="#64748b" fontStyle="italic">x</text>
                             <text x={margin.left+10} y={margin.top} textAnchor="start" fontSize="10" fill="#64748b" fontStyle="italic">y</text>
                         </svg>
                     </div>
+                    
+                    {/* Updated Vertical Slider Labeling */}
                     <div className="absolute right-0 top-0 h-full flex flex-col justify-center pr-1 pb-[30px] pt-[15px]">
+                        <div className="absolute -right-4 top-1/2 -translate-y-1/2 rotate-90 text-[10px] text-gray-500 font-semibold tracking-wide whitespace-nowrap origin-bottom">
+                            Coloring ({progressPercent.toFixed(0)}%)
+                        </div>
                         <input 
                             type="range" 
                             min={yMin} max={yMax} step={0.01}
@@ -295,6 +425,7 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                             onChange={(e) => setProbeT(parseFloat(e.target.value))}
                             className="h-full -mr-8 appearance-none bg-gray-100 rounded-full w-2 outline-none slider-vertical opacity-50 hover:opacity-100 transition-opacity border border-gray-300"
                             style={{ writingMode: 'vertical-lr', direction: 'rtl', verticalAlign: 'middle' }}
+                            title="Coloring by value levels (height), not by x-position."
                         />
                     </div>
                 </div>
@@ -373,7 +504,6 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                                     />
                                 )
                             })}
-                             {isDirichlet && <text x={width/2} y={height/2} textAnchor="middle" fill="#94a3b8" fontSize="12">Geometric visualization unavailable</text>}
 
                             <text x={width/2} y={height+5} textAnchor="middle" fontSize="10" fill="#64748b">Height (t)</text>
                             <text x={margin.left - 5} y={height/2} textAnchor="end" fontSize="10" fill="#64748b" style={{writingMode: 'vertical-rl', textOrientation: 'mixed'}}>Measure μ(t)</text>
@@ -597,8 +727,6 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                             </>
                         )}
                         
-                        {isDirichlet && <text x={width/2} y={singlePanelHeight/2} textAnchor="middle" fill="#94a3b8" fontSize="14">Geometric visualization unavailable</text>}
-
                         {/* Function Curve Overlay (Outline only) */}
                         {!isDirichlet && (
                             <path d={lineGeneratorArea(funcPoints) || ""} fill="none" stroke="#334155" strokeWidth={1.5} opacity={0.2} strokeDasharray="3 3"/>
@@ -610,7 +738,7 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                             y1={yScaleArea(currentT)} y2={yScaleArea(currentT)} 
                             stroke="#c026d3" strokeWidth={2} strokeDasharray="4 2"
                         />
-                        <text x={margin.left + 5} y={yScaleArea(currentT) - 5} fill="#c026d3" fontSize="11" fontWeight="bold">t = {currentT.toFixed(2)}</text>
+                        <text x={margin.left + 5} y={yScaleArea(currentT) - 5} fill="#c026d3" fontSize="11" fontWeight="bold">Coloring: t = {currentT.toFixed(2)}</text>
                         
                         {/* Dynamic Label for Active Slice properties */}
                          {!isDirichlet && !isInfinite && (
@@ -664,8 +792,11 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                     
                 </div>
 
-                {/* Slider */}
+                {/* Vertical Slider labeled as Coloring */}
                  <div className="absolute right-0 top-[40px] bottom-[30px] w-8 flex flex-col justify-center">
+                    <div className="absolute -right-4 top-1/2 -translate-y-1/2 rotate-90 text-[10px] text-gray-500 font-semibold tracking-wide whitespace-nowrap origin-bottom">
+                        Coloring ({progressPercent.toFixed(0)}%)
+                    </div>
                     <input 
                         type="range" 
                         min={yMin} max={yMax} step={0.01}
@@ -673,6 +804,7 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                         onChange={(e) => setProbeT(parseFloat(e.target.value))}
                         className="h-full appearance-none bg-gray-100 rounded-full w-2 outline-none slider-vertical opacity-50 hover:opacity-100 transition-opacity border border-gray-300 mx-auto"
                         style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+                        title="Coloring by value levels (height), not by x-position."
                     />
                 </div>
 
@@ -694,86 +826,6 @@ export const LebesgueVisualizer: React.FC<LebesgueVisualizerProps> = ({
                 </div>
             </div>
         )}
-
-        {/* MODE 3: Theory Mode (Text-First Panel for Dirichlet) */}
-        {viewMode === 'theory' && (
-            <div className="flex-1 overflow-y-auto text-slate-800 pr-2">
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4 text-xs text-amber-900 italic text-center">
-                    “This example is integrated by <strong>measure logic</strong>, not geometry.”
-                </div>
-
-                <div className="space-y-6">
-                    {/* Section 1 */}
-                    <section>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">1. Function Definition</h3>
-                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 font-mono text-xs shadow-sm">
-                            <p>f(x) = {'{'}</p>
-                            <div className="pl-6 my-1 border-l-2 border-slate-300 ml-2">
-                                <p>1 <span className="text-slate-500">if</span> x ∈ ℚ <span className="text-slate-400">(rational)</span></p>
-                                <p>0 <span className="text-slate-500">if</span> x ∉ ℚ <span className="text-slate-400">(irrational)</span></p>
-                            </div>
-                            <p className="mt-2">Domain: [0, 1]</p>
-                        </div>
-                    </section>
-
-                    {/* Section 2 */}
-                    <section>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">2. Level Sets Analysis</h3>
-                        <p className="mb-2 text-xs text-slate-600">We analyze the super-level sets <span className="font-mono bg-slate-100 px-1 rounded">E_t = {'{'} x | f(x) {'>'} t {'}'}</span>.</p>
-                        
-                        <div className="space-y-2 text-xs">
-                            <div className="flex gap-2 items-baseline border-b border-slate-100 pb-1">
-                                <span className="font-mono font-bold w-16 shrink-0 text-indigo-600">t ≥ 1</span>
-                                <div><span className="font-mono text-slate-500">E_t = ∅ (Empty)</span></div>
-                            </div>
-                            <div className="flex gap-2 items-baseline border-b border-slate-100 pb-1">
-                                <span className="font-mono font-bold w-16 shrink-0 text-indigo-600">0 ≤ t &lt; 1</span>
-                                <div><span className="font-mono text-slate-500">E_t = ℚ ∩ [0, 1]</span></div>
-                            </div>
-                            <div className="flex gap-2 items-baseline">
-                                <span className="font-mono font-bold w-16 shrink-0 text-indigo-600">t &lt; 0</span>
-                                <div><span className="font-mono text-slate-500">E_t = [0, 1]</span></div>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Section 3 */}
-                    <section>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">3. Measure Computation</h3>
-                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm">
-                            <p className="font-mono text-blue-900 mb-2 font-bold text-xs">Case: 0 ≤ t &lt; 1</p>
-                            <p className="font-mono text-center mb-1">μ(E_t) = μ(ℚ ∩ [0, 1])</p>
-                            <p className="text-xs text-blue-800 text-center mb-2 leading-tight">
-                                Rationals ℚ are countable.<br/>
-                                Countable sets have <strong>measure 0</strong>.
-                            </p>
-                            <p className="font-mono text-center font-bold text-blue-700">∴ μ(E_t) = 0</p>
-                        </div>
-                    </section>
-
-                    {/* Section 4 */}
-                    <section>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">4. Integral Conclusion</h3>
-                        <div className="flex flex-col items-center gap-1 font-mono text-sm bg-slate-50 p-4 rounded-lg border border-slate-200">
-                            <div className="flex items-center gap-2">
-                                <span>∫ f dμ</span>
-                                <span>=</span>
-                                <span>∫₀¹ μ(E_t) dt</span>
-                            </div>
-                             <div className="flex items-center gap-2 mt-1">
-                                <span>=</span>
-                                <span>∫₀¹ 0 dt</span>
-                            </div>
-                             <div className="flex items-center gap-2 mt-1 font-bold text-lg text-fuchsia-600">
-                                <span>=</span>
-                                <span>0</span>
-                            </div>
-                        </div>
-                    </section>
-                </div>
-            </div>
-        )}
-
       </div>
     </div>
   );
